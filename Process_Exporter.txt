@@ -1,0 +1,25 @@
+#!/bin/bash
+pgrep -a java>input.txt
+echo "{" >output.txt
+for pid in $(pgrep java)
+do
+        file=$(echo "/proc/$pid/cmdline")
+        if [ -e $file ]
+        then
+                echo "{" >>output.txt
+                echo "Pid:\" $pid \"," >>output.txt
+                grep $pid input.txt|awk '//{print "Name:\"",$NF,"\"," >> "output.txt"}'
+                awk '//{print "Command_Line:\"",$NR,"\"," >> "output.txt"}' /proc/$pid/cmdline
+        fi
+        file=$(echo "/proc/$pid/status")
+        if [ -e $file ]
+        then
+               awk '/State: */ {print "State:\"",$3,"\"," >> "output.txt"}' /proc/$pid/status
+               awk '//{print "Number Of Threads:\"",$20,"\"," >> "output.txt"}' /proc/$pid/stat
+               awk '//{print "Virtual Memory:\"",$23,"bytes\"," >> "output.txt"}' /proc/$pid/stat
+               awk '//{print "Resident Set Size:\"",$24,"\"" >> "output.txt"}' /proc/$pid/stat
+
+        fi
+        echo "},">>output.txt
+done
+echo "}">>output.txt
