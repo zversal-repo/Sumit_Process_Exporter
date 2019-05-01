@@ -1,25 +1,43 @@
 #!/bin/bash
 pgrep -a java>input.txt
-echo "{" >output.txt
+echo "{" >output.json
 for pid in $(pgrep java)
 do
         file=$(echo "/proc/$pid/cmdline")
         if [ -e $file ]
         then
-                echo "{" >>output.txt
-                echo "Pid:\" $pid \"," >>output.txt
-                grep $pid input.txt|awk '//{print "Name:\"",$NF,"\"," >> "output.txt"}'
-                awk '//{print "Command_Line:\"",$NR,"\"," >> "output.txt"}' /proc/$pid/cmdline
+                echo "," >> output.json
+                echo "{" >>output.json
+                echo "\"Pid\":\" $pid \"," >>output.json
+                grep $pid input.txt|awk '//{print "\"Name\":\"",$NF,"\"," >> "output.json"}'
+                awk '//{print "\"Command_Line\":\"",$NR,"\"," >> "output.json"}' /proc/$pid/cmdline
         fi
         file=$(echo "/proc/$pid/status")
         if [ -e $file ]
         then
-               awk '/State: */ {print "State:\"",$3,"\"," >> "output.txt"}' /proc/$pid/status
-               awk '//{print "Number Of Threads:\"",$20,"\"," >> "output.txt"}' /proc/$pid/stat
-               awk '//{print "Virtual Memory:\"",$23,"bytes\"," >> "output.txt"}' /proc/$pid/stat
-               awk '//{print "Resident Set Size:\"",$24,"\"" >> "output.txt"}' /proc/$pid/stat
+               awk '/State: */ {print "\"State\":\"",$3,"\"," >> "output.json"}' /proc/$pid/status
+               awk '//{print "\"Number Of Threads\":\"",$20,"\"," >> "output.json"}' /proc/$pid/stat
+               awk '//{print "\"Virtual Memory\":\"",$23,"bytes\"," >> "output.json"}' /proc/$pid/stat
+               awk '//{print "\"Resident Set Size\":\"",$24,"\"" >> "output.json"}' /proc/$pid/stat
 
         fi
-        echo "},">>output.txt
+        echo "\"Threads\":[" >>output.json
+        counter=$(ls /proc/$pid/task|wc -l)
+
+        for tid in $(ls /proc/$pid/task)
+        do
+               if [ $counter -ne 0 ]
+               then
+                       array[counter]=\"$(cat /proc/$pid/task/$tid/comm)\"
+                       let counter-=1
+               fi
+        done
+        IFS=",$IFS"
+        printf '%s\n' "${array[*]}" >>"output.json"
+        IFS="${IFS:1}"
+        echo "]" >>output.json
+        echo "}">>output.json
 done
-echo "}">>output.txt
+sed -i '2d' ./output.json
+echo "}">>output.json
+
